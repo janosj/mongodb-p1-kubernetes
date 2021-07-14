@@ -1,0 +1,72 @@
+# Requires docker login https://registry1.dso.mil
+
+docker pull registry1.dso.mil/ironbank/mongodb/mongodb-enterprise/mongodb-enterprise-operator:1.5.3
+
+# To list images:
+# docker image ls
+
+# To delete images: 
+# docker image rm <imageID>
+
+
+###
+
+## Basic K8s cluster status:
+kubectl cluster-info
+kubectl get nodes
+kubectl get pods --all-namespaces
+
+# To see where pods are running
+kubectl get pods --all-namespaces --output=wide
+
+kubectl get services
+
+
+## Pod status (add the -w option while deploying to wait for updates):
+kubectl get pods -n mongodb
+
+# Pod troubleshooting
+kubectl -n mongodb describe pods <pod_name>
+kubectl describe mdb mdb-persistent-standalone-1 -n mongodb
+
+# To view what containers are inside a pod, 
+# where they are running (i.e. which nodes), 
+# and what images are used to build those containers:
+kubectl describe pods -n mongodb
+
+# Or, to describe a single pod:
+kubectl describe pod <pod-name> -n mongodb
+
+# That give you the name of the containers in the pod. To get the logs from a specific container:
+kubectl logs <pod-name> -c <container-name> -n mongodb
+kubectl logs ops-manager-db-0 -c mongodb-enterprise-init-appdb -n mongodb
+
+# Lists mongodb, mongodbusers, and opsmanagers
+kubectl api-resources
+kubectl get mdb
+kubectl get mdb my-replica-set -n mongodb -o yaml
+
+# Delete the resource, fix the problem, and try again:
+kubectl delete mdb --all -n mongodb
+
+To get the logs from the Operator:
+kubectl logs -f deployment/mongodb-enterprise-operator -n mongodb
+
+You can also shell to a container:  
+kubectl exec -it --namespace=mongodb my-replica-set-0 -- /bin/bash
+
+## Docker commands
+
+# To pull an individual container
+# (requires docker login https://registry1.dso.mil)
+docker pull registry1.dso.mil/ironbank/mongodb/mongodb-enterprise/mongodb-enterprise-operator:1.5.3
+
+# Attach to an individual container
+sudo docker run -it --rm --name myTag quay.io/mongodb/mongodb-enterprise-init-mongod-rhel80:4.2.13 bash
+
+# To list images:
+docker image ls
+
+# To delete images:
+docker image rm <imageID>
+

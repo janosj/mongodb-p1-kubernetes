@@ -1,0 +1,96 @@
+---
+apiVersion: mongodb.com/v1
+kind: MongoDBOpsManager
+metadata:
+  name: ops-manager-localmode
+spec:
+  replicas: 1
+  version: 4.4.14
+  adminCredentials: ops-manager-firstuser-secret
+
+  # Optional. The Ops Manager configuration. All values must be of type string.
+  configuration:
+    # Setting mms.ignoreInitialUiSetup=true avoids having to use the setup wizard in Ops Manager. 
+    # Note this requires setting some mandatory configuration properties.
+    # See https://docs.opsmanager.mongodb.com/current/reference/configuration/index.html#mms.ignoreInitialUiSetup
+    mms.ignoreInitialUiSetup: "true"
+    mms.adminEmailAddr: admin@mongodb.com
+    mms.fromEmailAddr: admin@mongodb.com
+    mms.mail.hostname: email-smtp.us-east-1.amazonaws.com
+    mms.mail.port: "465"
+    mms.mail.ssl: "true"
+    mms.mail.transport: smtp
+    mms.minimumTLSVersion: TLSv1.2
+    mms.replyToEmailAddr: admin@mongodb.com
+    mms.fromEmailAddr: admin@mongodb.com
+    # Local Mode is configured so Ops Manger does not download any binaries from the internet. 
+    # Only the binaries present will be available for the agents.
+    # automation.versions.source: mongodb
+    automation.versions.source: local
+
+  # optional. Disabled by default. Creates an additional service to make Ops Manager reachable from
+  # outside of the Kubernetes cluster.
+  externalConnectivity:
+    # LoadBalancer|NodePort
+    type: NodePort
+    # optional. Corresponds to NodePort port
+    port: 30100
+    # optional
+    # loadBalancerIP: 123.456.789
+    # optional
+    # externalTrafficPolicy: Local
+
+  statefulSet:
+    spec:
+      template:
+        spec:
+          volumes:
+            - name: mongodb-versions
+              persistentVolumeClaim:
+                claimName: mongodb-versions-claim
+          containers:
+            - name: mongodb-ops-manager
+              volumeMounts:
+                - name: mongodb-versions
+                  mountPath: /mongodb-ops-manager/mongodb-releases
+
+          initContainers:
+          - name: mongodb-binaries-init-container
+            # image: quay.io/mongodb/mongodb-enterprise-init-mongod-ubuntu1604:4.2.8
+            image: registry1.dso.mil/ironbank/mongodb/mongodb-enterprise/mongodb-ops-manager-db-bin:4.4.14
+            command:
+            - cp
+            - -r
+            - /binaries/.
+            - /mongodb-ops-manager/mongodb-releases/
+            volumeMounts:
+             - name: mongodb-versions
+               mountPath: /mongodb-ops-manager/mongodb-releases
+
+  # the application database backing Ops Manager. Replica Set is the only supported type
+  # Application database has the SCRAM-SHA authentication mode always enabled
+  applicationDatabase:
+    members: 3
+    # optional. Configures the version of MongoDB used as an application database.
+    # The bundled MongoDB binary will be used if omitted and no download from the Internet will happen
+    # version: "4.4.1"
+    persistent: true
+    podSpec:
+      cpu: '0.25'
+
+  backup:
+    enabled: false
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-versions-claim
+spec:
+  # storageClassName: gp2
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+
